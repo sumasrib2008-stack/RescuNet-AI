@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RescuNet-AI - Global Disaster Risk & Evacuation</title>
+    <script src="https://cdn.jsdelivr.net/npm/@google/genai"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+    <div class="max-w-3xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-red-500">RescuNet-AI</h1>
+            <p class="text-slate-400">Global Disaster Risk Assessment & Emergency Safe Routing</p>
+        </header>
+
+        <div class="bg-slate-800 p-6 rounded-xl shadow-lg mb-6 border border-slate-700">
+            <label class="block text-sm font-medium mb-2">Describe the Emergency / Hazard (Anywhere in the world):</label>
+            <textarea id="reportInput" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-red-500" placeholder="e.g., Heavy flash floods near Madhuravada junction, Visakhapatnam..."></textarea>
+            <button onclick="analyzeHazard()" id="submitBtn" class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition">Analyze Risk & Get Safe Route</button>
+        </div>
+
+        <div id="loading" class="hidden text-center text-red-400 font-semibold mb-6">Analyzing global hazard data and generating evacuation safety steps...</div>
+
+        <div id="resultCard" class="hidden bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700 space-y-4">
+            <h2 class="text-xl font-bold text-red-400" id="resHazard"></h2>
+            <p><strong>Location:</strong> <span id="resLocation"></span></p>
+            <p><strong>Severity:</strong> <span id="resSeverity" class="px-2 py-1 bg-red-900 text-red-200 rounded text-xs font-bold"></span></p>
+            <p><strong>Predicted Damage:</strong> <span id="resDamage"></span></p>
+            
+            <div>
+                <h3 class="font-semibold text-slate-300 mt-2">Safety Precautions:</h3>
+                <ul id="resPrecautions" class="list-disc list-inside text-sm text-slate-300 space-y-1 mt-1"></ul>
+            </div>
+
+            <div class="bg-slate-900 p-4 rounded-lg border border-red-500/30">
+                <h3 class="font-semibold text-red-400">Immediate Emergency Action:</h3>
+                <p id="resAction" class="text-sm text-slate-300 mt-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeHazard() {
+            const text = document.getElementById('reportInput').value;
+            if (!text) return alert('Please enter a hazard report.');
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('resultCard').classList.add('hidden');
+
+            try {
+                const ai = new GoogleGenAI({ apiKey: "YOUR_GEMINI_API_KEY_HERE" });
+
+                const prompt = `You are a global disaster management AI agent. Analyze this emergency report: "${text}". 
+                Extract and return strict JSON with these keys: 
+                "hazard_type", "exact_location", "severity_level" (Low/Medium/Critical/Catastrophic), 
+                "predicted_damage_radius", "safety_precautions" (array of 3 strings), and "emergency_action".`;
+
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                });
+
+                let rawText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+                const data = JSON.parse(rawText);
+
+                document.getElementById('resHazard').innerText = data.hazard_type.toUpperCase();
+                document.getElementById('resLocation').innerText = data.exact_location;
+                document.getElementById('resSeverity').innerText = data.severity_level;
+                document.getElementById('resDamage').innerText = data.predicted_damage_radius;
+                
+                const precautionsList = document.getElementById('resPrecautions');
+                precautionsList.innerHTML = '';
+                data.safety_precautions.forEach(step => {
+                    const li = document.createElement('li');
+                    li.innerText = step;
+                    precautionsList.appendChild(li);
+                });
+
+                document.getElementById('resAction').innerText = data.emergency_action;
+                document.getElementById('resultCard').classList.remove('hidden');
+            } catch (error) {
+                alert('Error analyzing report: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
